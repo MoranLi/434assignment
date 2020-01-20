@@ -19,6 +19,8 @@
 
 #define BACKLOG 10	 // how many pending connections queue will hold
 
+#define MAXDATASIZE 40 // max number of bytes of key / value
+
 
 void sigchld_handler(int s)
 {
@@ -41,6 +43,48 @@ void *get_in_addr(struct sockaddr *sa)
 	}
 
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+
+int validOperation(char* operation)
+{
+	char add[] = "add";
+	char getvalue[] = "getvalue";
+	char getall[] = "getall";
+	char remove[] = "remove";
+	char quit[] = "quit";
+
+	printf("%d",strncmp(operation,add,3));
+
+	if(strncmp(operation,quit,4) == 0)
+	{
+		return 1;
+	}
+	if(strncmp(operation,getall,6) == 0)
+	{
+		return 2;
+	}
+	if(strncmp(operation,getvalue,8) == 0)
+	{
+		return 3;
+	}
+	if(strncmp(operation,remove,6) == 0)
+	{
+		return 4;
+	}
+	if(strncmp(operation,add,3) == 0)
+	{
+		return 5;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+void sendString(int sockfd)
+{
+	
 }
 
 int main(void)
@@ -109,7 +153,9 @@ int main(void)
 
 	printf("server: waiting for connections...\n");
 
+	
 	while(1) {  // main accept() loop
+		char message[MAXDATASIZE * 3];
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 		if (new_fd == -1) {
@@ -121,17 +167,53 @@ int main(void)
 			get_in_addr((struct sockaddr *)&their_addr),
 			s, sizeof s);
 		printf("server: got connection from %s\n", s);
+		
+		bzero(message, sizeof(message));
 
-		if (!fork()) { // this is the child process
-			close(sockfd); // child doesn't need the listener
-			if (send(new_fd, "Hello, world!", 13, 0) == -1)
-				perror("send");
+		read(new_fd, message, sizeof(message));
+
+		printf("From Client: %s", message);
+
+		char *ptr = strtok(message, "|");
+
+		char *splitedMessage[3];
+		int k = 0;
+
+		while (ptr != NULL)
+		{
+			splitedMessage[k++] = ptr;
+			ptr = strtok(NULL,"|");
+		}
+
+		int operation_code = validOperation(splitedMessage[0]);
+
+		bzero(message, sizeof(message));
+
+		strcpy(message, "Receive Message:");
+		strcat(message, splitedMessage[0]);	
+
+		if (operation_code > 2)
+		{
+			strcat(message, "\nKey: ");
+			strcat(message, splitedMessage[1]);		
+		}
+		if(operation_code > 4)
+		{
+			strcat(message, "\nValue: ");
+			strcat(message, splitedMessage[2]);	
+		}
+
+		write(sockfd, message, sizeof(message));
+
+		if(operation_code == 1)
+		{
+			printf("Server Exit...\n"); 
 			close(new_fd);
-			exit(0);
+			return 0;
 		}
 		close(new_fd);  // parent doesn't need this
 	}
-
+	close(sockfd);
 	return 0;
 }
 

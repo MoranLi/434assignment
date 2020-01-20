@@ -14,9 +14,9 @@
 
 #include <arpa/inet.h>
 
-#define PORT "34900" // the port client will be connecting to 
+#define CLIENT_PORT "34900" // the CLIENT_PORT client will be connecting to 
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
+#define MAXDATASIZE 40 // max number of bytes of key / value
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -28,10 +28,115 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+int validOperation(char* operation)
+{
+	char add[] = "add";
+	char getvalue[] = "getvalue";
+	char getall[] = "getall";
+	char remove[] = "remove";
+	char quit[] = "quit";
+
+	if(strncmp(operation,quit,4) == 0)
+	{
+		return 1;
+	}
+	if(strncmp(operation,getall,6) == 0)
+	{
+		return 2;
+	}
+	if(strncmp(operation,getvalue,8) == 0)
+	{
+		return 3;
+	}
+	if(strncmp(operation,remove,6) == 0)
+	{
+		return 4;
+	}
+	if(strncmp(operation,add,3) == 0)
+	{
+		return 5;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+void sendString(int sockfd)
+{
+	char operation[MAXDATASIZE];
+	char key[MAXDATASIZE];
+	char value[MAXDATASIZE];
+	char message[MAXDATASIZE * 3];
+	int n;
+
+	for (;;) {
+		// clear buffer
+		bzero(operation, sizeof(operation)); 
+		bzero(key, sizeof(key)); 
+		bzero(value, sizeof(value));
+		bzero(message, sizeof(message));
+
+		// enter anc check operation
+		printf("Enter the operation:");
+		n = 0;
+		while ((operation[n++] = getchar()) != '\n')
+			; 
+		
+		int operation_code = validOperation(operation);
+
+		// base on operation , determine next input
+		if (operation_code < 0)
+		{
+			printf("error operation entered");
+			continue;
+		}
+		strtok(operation, "\n");
+		strcat(message, operation);
+		strcat(message, "|");
+		if (operation_code > 2)
+		{
+			printf("Enter the key:");
+			n = 0;
+			while ((key[n++] = getchar()) != '\n') 
+				;
+			strtok(key, "\n");
+			strcat(message, key);
+			strcat(message, "|");
+			
+		}
+		if(operation_code > 4)
+		{
+			printf("Enter the value:");
+			n = 0;
+			while ((value[n++] = getchar()) != '\n') 
+				; 
+			// remove last \n 
+			strtok(value, "\n");
+			strcat(message, value);
+
+		}
+
+		printf("%s", message);
+
+		write(sockfd, message, sizeof(message));
+		bzero(message, sizeof(message));
+		read(sockfd, message, sizeof(message));
+
+		printf("From Server: %s", message);
+		if(operation_code == 1)
+		{
+			printf("Client Exit...\n"); 
+            break; 
+		}
+	}
+
+
+}
+
 int main(int argc, char *argv[])
 {
-	int sockfd, numbytes;  
-	char buf[MAXDATASIZE];
+	int sockfd;  
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
@@ -45,7 +150,7 @@ int main(int argc, char *argv[])
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(argv[1], CLIENT_PORT, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
@@ -78,14 +183,7 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-	    perror("recv");
-	    exit(1);
-	}
-
-	buf[numbytes] = '\0';
-
-	printf("client: received '%s'\n",buf);
+	sendString(sockfd);
 
 	close(sockfd);
 
