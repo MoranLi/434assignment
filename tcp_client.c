@@ -88,7 +88,7 @@ void sendString(int sockfd)
 		// base on operation , determine next input
 		if (operation_code < 0)
 		{
-			printf("error operation entered");
+			printf("error operation entered\n");
 			continue;
 		}
 		strtok(operation, "\n");
@@ -117,13 +117,11 @@ void sendString(int sockfd)
 
 		}
 
-		printf("%s", message);
-
 		write(sockfd, message, sizeof(message));
 		bzero(message, sizeof(message));
 		read(sockfd, message, sizeof(message));
 
-		printf("From Server: %s", message);
+		printf("From Server: %s\n", message);
 		if(operation_code == 1)
 		{
 			printf("Client Exit...\n"); 

@@ -43,10 +43,12 @@ int add(char* key, char* value)
 
 char* get(char* key)
 {
+	printf("GET %s",key);
     for (int i = 0; i< MAXPAIR; i++)
     {
         if (strncmp(key, keys[i], strlen(key)) == 0)
         {
+			printf("value %s\n",values[i]);
             return values[i];
         }
     }
@@ -55,10 +57,12 @@ char* get(char* key)
 
 int removeKey(char* key)
 {
+	printf("REMOVE %s",key);
     for (int i = 0; i< MAXPAIR; i++)
     {
         if (strncmp(key, keys[i], strlen(key)) == 0)
         {
+			printf("value %s\n",values[i]);
             use[i] = 0;
             return 1;
         }
@@ -149,20 +153,18 @@ int validOperation(char* operation)
 
 void sendString(int sockfd)
 {
-	char key[MAXDATASIZE];
-	char value[MAXDATASIZE];
 	char message[MAXDATASIZE * 3];
 	char send_message[MAXDATASIZE * 3];
 	int n;
     // infinite loop for chat 
     for (;;) { 
-        bzero(key, sizeof(key)); 
-		bzero(value, sizeof(value));
 		bzero(message, MAXDATASIZE * 3); 
 		bzero(send_message, MAXDATASIZE * 3);
   
         // read the message from client and copy it in buffer 
         read(sockfd, message, sizeof(message)); 
+
+		printf("%s\n", message);
 
 		char *ptr = strtok(message, "|");
 
@@ -187,7 +189,7 @@ void sendString(int sockfd)
 		}
 		if (operation_code == 3)
 		{
-			char* message = get(key);
+			char* message = get(splitedMessage[1]);
 			if (message == NULL){
 				strcpy(send_message,"get fail");
 			}
@@ -197,7 +199,7 @@ void sendString(int sockfd)
 		}
 		if (operation_code == 4)
 		{
-			result_code = remove(splitedMessage[1]);
+			result_code = removeKey(splitedMessage[1]);
 			if(result_code < 0){
 				strcpy(send_message,"remove fail");
 			}
@@ -282,7 +284,6 @@ int main(void)
     else{
         printf("server acccept the client...\n"); 
 	}
-	printf("message1");
 
     // Function for chatting between client and server 
     sendString(connfd); 
