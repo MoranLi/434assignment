@@ -91,6 +91,23 @@ char* getAll()
     return allInfo;
 }
 
+char *duplicateChar(char *value)
+{
+	char newValue[MAXDATASIZE];
+	int j = 0;
+	for(int i = 0; i < strlen(value); i ++)
+	{
+		newValue[j] = value[i];
+		j++;
+		if (value[i] == 'c' || value[i] == 'm' || value[i] == 'p' || value[i] == 't')
+		{
+			newValue[j+1] = value[i];
+			j++;
+		}
+	}
+	return newValue;
+}
+
 
 
 void sigchld_handler(int s)
@@ -158,65 +175,66 @@ void sendString(int sockfd)
 	int n;
     // infinite loop for chat 
     for (;;) { 
-		bzero(message, MAXDATASIZE * 3); 
-		bzero(send_message, MAXDATASIZE * 3);
-  
-        // read the message from client and copy it in buffer 
-        read(sockfd, message, sizeof(message)); 
+			bzero(message, MAXDATASIZE * 3); 
+			bzero(send_message, MAXDATASIZE * 3);
 
-		printf("%s\n", message);
+			// read the message from client and copy it in buffer 
+			read(sockfd, message, sizeof(message)); 
 
-		char *ptr = strtok(message, "|");
+			printf("%s\n", message);
 
-		char *splitedMessage[3];
-		n = 0;
-		while (ptr != NULL)
-		{
-			splitedMessage[n++] = ptr;
-			ptr = strtok(NULL,"|");
-		}
+			char *ptr = strtok(message, "|");
 
-		int operation_code = validOperation(splitedMessage[0]);
-		int result_code = 0;
-		if (operation_code == 1)
-		{
-			printf("Server Exit...\n"); 
-            break; 
-		}
-		if (operation_code == 2)
-		{
-			strcpy(send_message,getAll());
-		}
-		if (operation_code == 3)
-		{
-			char* message = get(splitedMessage[1]);
-			if (message == NULL){
-				strcpy(send_message,"get fail");
+			char *splitedMessage[3];
+			n = 0;
+			while (ptr != NULL)
+			{
+				splitedMessage[n++] = ptr;
+				ptr = strtok(NULL,"|");
 			}
-			else{
-				strcpy(send_message,message);
+
+			int operation_code = validOperation(splitedMessage[0]);
+			int result_code = 0;
+			if (operation_code == 1)
+			{
+				printf("Server Exit...\n"); 
+							break; 
 			}
-		}
-		if (operation_code == 4)
-		{
-			result_code = removeKey(splitedMessage[1]);
-			if(result_code < 0){
-				strcpy(send_message,"remove fail");
+			if (operation_code == 2)
+			{
+				strcpy(send_message,getAll());
 			}
-			else{
-				strcpy(send_message,"remove success");
+			if (operation_code == 3)
+			{
+				char* message = get(splitedMessage[1]);
+				if (message == NULL){
+					strcpy(send_message,"get fail");
+				}
+				else{
+					strcpy(send_message,message);
+				}
 			}
-		}
-		if (operation_code == 5)
-		{
-			result_code = add(splitedMessage[1], splitedMessage[2]);
-			if(result_code < 0){
-				strcpy(send_message,"add fail");
+			if (operation_code == 4)
+			{
+				result_code = removeKey(splitedMessage[1]);
+				if(result_code < 0){
+					strcpy(send_message,"remove fail");
+				}
+				else{
+					strcpy(send_message,"remove success");
+				}
 			}
-			else{
-				strcpy(send_message,"add success");
+			if (operation_code == 5)
+			{
+				char* newvalue = duplicateChar(splitedMessage[2]);
+				result_code = add(splitedMessage[1], newvalue);
+				if(result_code < 0){
+					strcpy(send_message,"add fail");
+				}
+				else{
+					strcpy(send_message,"add success");
+				}
 			}
-		}
 /*
 		strcpy(send_message, "Receive Message:");	
 
