@@ -14,7 +14,7 @@
 
 #include <arpa/inet.h>
 
-#define CLIENT_PORT "34900" // the CLIENT_PORT client will be connecting to 
+#define CLIENT_PORT "34901" // the CLIENT_PORT client will be connecting to 
 
 #define MAXDATASIZE 40 // max number of bytes of key / value
 
