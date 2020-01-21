@@ -74,7 +74,7 @@ char* getAll()
 {
     char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
     char key[MAXDATASIZE];
-	char value[MAXDATASIZE];
+		char value[MAXDATASIZE];
     for (int i = 0; i< MAXPAIR; i++)
     {
         if(use[i] == 1){
@@ -105,7 +105,9 @@ char *duplicateChar(char *value)
 			j++;
 		}
 	}
-	return newValue;
+	char* somevalue =  (char*)malloc(MAXDATASIZE);
+	strcpy(somevalue, newValue);
+	return somevalue;
 }
 
 
