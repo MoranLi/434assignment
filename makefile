@@ -11,6 +11,10 @@ EXTRA = -m32
 
 all: clean server client tcp_server tcp_client
 
+p1: server client
+
+p2: tcp_client tcp_server
+
 clean:
 	rm -f *.o *.a server client tcp_server tcp_client
 
