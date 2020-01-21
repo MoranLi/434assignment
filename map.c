@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAXPAIR 3
+#define MAXPAIR 20
 #define MAXDATASIZE 40
 
 char *keys[MAXPAIR];
 char *values[MAXPAIR];
-int use[MAXPAIR]= {0,0,0};
+int use[MAXPAIR]= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 int add(char* key, char* value)
 {
@@ -50,30 +50,46 @@ int removeKey(char* key)
     return -1;
 }
 
-void printMap()
+char* getAll()
 {
-    printf("PrintMap: \n");
+    char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
+    char key[MAXDATASIZE];
+	char value[MAXDATASIZE];
     for (int i = 0; i< MAXPAIR; i++)
     {
         if(use[i] == 1){
-            printf("%s:%s\n", keys[i], values[i]);
+            bzero(key, sizeof(key)); 
+		    bzero(value, sizeof(value));
+            memcpy(key, keys[i], strlen(keys[i]));
+            memcpy(value, values[i], strlen(keys[i]));
+            strcat(allInfo, key);
+            strcat(allInfo,":");
+            strcat(allInfo, value);
+            strcat(allInfo, "\t");
         }
     }
+    return allInfo;
 }
 
 int main(void)
 {
-    printMap();
+    printf("%s\n",getAll());
     add("01","EZ");
-    printMap();
+    printf("%s\n",getAll());
     printf("Get %s : %s\n", "01", get("01"));
     add("02","08");
-    printMap();
+    printf("%s\n",getAll());
     add("03","06");
-    printMap();
+    printf("%s\n",getAll());
     removeKey("01");
-    printMap();
+    printf("%s\n",getAll());
     add("04","04");
-    printMap();
-
+    printf("%s\n",getAll());
+    char* message = getAll();
+			if (message == NULL){
+				strcpy(send_message,"get fail");
+			}
+			else{
+				strcpy(send_message,message);
+			}
 }

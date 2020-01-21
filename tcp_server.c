@@ -16,10 +16,77 @@
 #include <signal.h>
 
 #define PORT 34901  // the port users will be connecting to
-
 #define BACKLOG 10	 // how many pending connections queue will hold
-
 #define MAXDATASIZE 40 // max number of bytes of key / value
+#define MAXPAIR 20
+
+char *keys[MAXPAIR];
+char *values[MAXPAIR];
+int use[MAXPAIR]= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+int add(char* key, char* value)
+{
+    for (int i = 0; i< MAXPAIR; i++)
+    {
+        if (use[i] == 0)
+        {
+            keys[i] = (char*)malloc(strlen(key));
+            values[i] = (char*)malloc(strlen(value));
+            memcpy(keys[i], key, strlen(key));
+            memcpy(values[i], value, strlen(value));
+            use[i] = 1;
+            return 1;
+        }
+    }
+    return -1;
+}
+
+char* get(char* key)
+{
+    for (int i = 0; i< MAXPAIR; i++)
+    {
+        if (strncmp(key, keys[i], strlen(key)) == 0)
+        {
+            return values[i];
+        }
+    }
+    return NULL;
+}
+
+int removeKey(char* key)
+{
+    for (int i = 0; i< MAXPAIR; i++)
+    {
+        if (strncmp(key, keys[i], strlen(key)) == 0)
+        {
+            use[i] = 0;
+            return 1;
+        }
+    }
+    return -1;
+}
+
+char* getAll()
+{
+    char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
+    char key[MAXDATASIZE];
+	char value[MAXDATASIZE];
+    for (int i = 0; i< MAXPAIR; i++)
+    {
+        if(use[i] == 1){
+            bzero(key, sizeof(key)); 
+		    bzero(value, sizeof(value));
+            memcpy(key, keys[i], strlen(keys[i]));
+            memcpy(value, values[i], strlen(keys[i]));
+            strcat(allInfo, key);
+            strcat(allInfo,":");
+            strcat(allInfo, value);
+            strcat(allInfo, "\t");
+        }
+    }
+    return allInfo;
+}
+
 
 
 void sigchld_handler(int s)
@@ -97,7 +164,6 @@ void sendString(int sockfd)
         // read the message from client and copy it in buffer 
         read(sockfd, message, sizeof(message)); 
 
-
 		char *ptr = strtok(message, "|");
 
 		char *splitedMessage[3];
@@ -109,7 +175,47 @@ void sendString(int sockfd)
 		}
 
 		int operation_code = validOperation(splitedMessage[0]);
-
+		int result_code = 0;
+		if (operation_code == 1)
+		{
+			printf("Server Exit...\n"); 
+            break; 
+		}
+		if (operation_code == 2)
+		{
+			strcpy(send_message,getAll());
+		}
+		if (operation_code == 3)
+		{
+			char* message = get(key);
+			if (message == NULL){
+				strcpy(send_message,"get fail");
+			}
+			else{
+				strcpy(send_message,message);
+			}
+		}
+		if (operation_code == 4)
+		{
+			result_code = remove(splitedMessage[1]);
+			if(result_code < 0){
+				strcpy(send_message,"remove fail");
+			}
+			else{
+				strcpy(send_message,"remove success");
+			}
+		}
+		if (operation_code == 5)
+		{
+			result_code = add(splitedMessage[1], splitedMessage[2]);
+			if(result_code < 0){
+				strcpy(send_message,"add fail");
+			}
+			else{
+				strcpy(send_message,"add success");
+			}
+		}
+/*
 		strcpy(send_message, "Receive Message:");	
 
 		if (operation_code > 2)
@@ -124,20 +230,15 @@ void sendString(int sockfd)
 			memcpy(value, splitedMessage[2],  sizeof(splitedMessage[2]));
 			strcat(send_message, value);	
 		}
-
+*/
 		write(sockfd, send_message, sizeof(send_message));
-  
-        // if msg contains "Exit" then server exit and chat ended. 
-        if (strncmp("quit", splitedMessage, 4) == 0) { 
-            printf("Server Exit...\n"); 
-            break; 
-        } 
     } 
 }
 
 int main(void)
 {
-	int sockfd, connfd, len; 
+	int sockfd, connfd; 
+	socklen_t len;
     struct sockaddr_in servaddr, cli; 
   
     // socket create and verification 
