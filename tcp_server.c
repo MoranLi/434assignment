@@ -17,14 +17,14 @@
 
 #define PORT 34901  // the port users will be connecting to
 #define BACKLOG 10	 // how many pending connections queue will hold
-#define MAXDATASIZE 40 // max number of bytes of key / value
+#define MAXDATASIZE 80 // max number of bytes of key / value
 #define MAXPAIR 20
 
 char *keys[MAXPAIR];
 char *values[MAXPAIR];
 int use[MAXPAIR]= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-int add(char* key, char* value)
+int addKey(char* key, char* value)
 {
     for (int i = 0; i< MAXPAIR; i++)
     {
@@ -41,28 +41,24 @@ int add(char* key, char* value)
     return -1;
 }
 
-char* get(char* key)
+int getKey(char* key)
 {
-	printf("GET %s",key);
     for (int i = 0; i< MAXPAIR; i++)
     {
         if (strncmp(key, keys[i], strlen(key)) == 0)
         {
-			printf("value %s\n",values[i]);
-            return values[i];
+            return i;
         }
     }
-    return NULL;
+    return -1;
 }
 
 int removeKey(char* key)
 {
-	printf("REMOVE %s",key);
     for (int i = 0; i< MAXPAIR; i++)
     {
         if (strncmp(key, keys[i], strlen(key)) == 0)
         {
-			printf("value %s\n",values[i]);
             use[i] = 0;
             return 1;
         }
@@ -74,7 +70,7 @@ char* getAll()
 {
     char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
     char key[MAXDATASIZE];
-		char value[MAXDATASIZE];
+	char value[MAXDATASIZE];
     for (int i = 0; i< MAXPAIR; i++)
     {
         if(use[i] == 1){
@@ -101,16 +97,15 @@ char *duplicateChar(char *value)
 		j++;
 		if (value[i] == 'c' || value[i] == 'm' || value[i] == 'p' || value[i] == 't')
 		{
-			newValue[j+1] = value[i];
+			newValue[j] = value[i];
 			j++;
 		}
 	}
+	newValue[j] = '\0';
 	char* somevalue =  (char*)malloc(MAXDATASIZE);
 	strcpy(somevalue, newValue);
 	return somevalue;
 }
-
-
 
 void sigchld_handler(int s)
 {
@@ -177,82 +172,70 @@ void sendString(int sockfd)
 	int n;
     // infinite loop for chat 
     for (;;) { 
-			bzero(message, MAXDATASIZE * 3); 
-			bzero(send_message, MAXDATASIZE * 3);
+		bzero(message, MAXDATASIZE * 3); 
+		bzero(send_message, MAXDATASIZE * 3);
 
-			// read the message from client and copy it in buffer 
-			read(sockfd, message, sizeof(message)); 
+		// read the message from client and copy it in buffer 
+		read(sockfd, message, sizeof(message)); 
 
-			printf("%s\n", message);
+		printf("%s\n", message);
 
-			char *ptr = strtok(message, "|");
+		char *ptr = strtok(message, "|");
 
-			char *splitedMessage[3];
-			n = 0;
-			while (ptr != NULL)
-			{
-				splitedMessage[n++] = ptr;
-				ptr = strtok(NULL,"|");
-			}
-
-			int operation_code = validOperation(splitedMessage[0]);
-			int result_code = 0;
-			if (operation_code == 1)
-			{
-				printf("Server Exit...\n"); 
-							break; 
-			}
-			if (operation_code == 2)
-			{
-				strcpy(send_message,getAll());
-			}
-			if (operation_code == 3)
-			{
-				char* message = get(splitedMessage[1]);
-				if (message == NULL){
-					strcpy(send_message,"get fail");
-				}
-				else{
-					strcpy(send_message,message);
-				}
-			}
-			if (operation_code == 4)
-			{
-				result_code = removeKey(splitedMessage[1]);
-				if(result_code < 0){
-					strcpy(send_message,"remove fail");
-				}
-				else{
-					strcpy(send_message,"remove success");
-				}
-			}
-			if (operation_code == 5)
-			{
-				char* newvalue = duplicateChar(splitedMessage[2]);
-				result_code = add(splitedMessage[1], newvalue);
-				if(result_code < 0){
-					strcpy(send_message,"add fail");
-				}
-				else{
-					strcpy(send_message,"add success");
-				}
-			}
-/*
-		strcpy(send_message, "Receive Message:");	
-
-		if (operation_code > 2)
+		char *splitedMessage[3];
+		n = 0;
+		while (ptr != NULL)
 		{
-			strcat(send_message, "\nKey: ");
-			memcpy(key, splitedMessage[1], sizeof(splitedMessage[1]));
-			strcat(send_message, key);		
+			splitedMessage[n++] = ptr;
+			ptr = strtok(NULL,"|");
 		}
-		if(operation_code > 4)
+
+		int operation_code = validOperation(splitedMessage[0]);
+		int result_code = 0;
+		if (operation_code == 1)
 		{
-			strcat(send_message, "\nValue: ");
-			memcpy(value, splitedMessage[2],  sizeof(splitedMessage[2]));
-			strcat(send_message, value);	
+			printf("Server Exit...\n"); 
+			break; 
 		}
-*/
+		else if (operation_code == 2)
+		{
+			strcpy(send_message,getAll());
+		}
+		else if (operation_code == 3)
+		{
+			int get_index = getKey(splitedMessage[1]);
+			printf("%d",get_index);
+			if (get_index < 0){
+				strcpy(send_message,"get fail");
+			}
+			else{
+				char* get_value = (char*)malloc(MAXDATASIZE);
+				memcpy(get_value,values[get_index], strlen(values[get_index]));
+				strcpy(send_message,get_value);
+				free(get_value);
+			}
+		}
+		else if (operation_code == 4)
+		{
+			result_code = removeKey(splitedMessage[1]);
+			if(result_code < 0){
+				strcpy(send_message,"remove fail");
+			}
+			else{
+				strcpy(send_message,"remove success");
+			}
+		}
+		else if (operation_code == 5)
+		{
+			char* newvalue = duplicateChar(splitedMessage[2]);
+			result_code = addKey(splitedMessage[1], newvalue);
+			if(result_code < 0){
+				strcpy(send_message,"add fail");
+			}
+			else{
+				strcpy(send_message,"add success");
+			}
+		}
 		write(sockfd, send_message, sizeof(send_message));
     } 
 }
