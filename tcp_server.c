@@ -178,9 +178,9 @@ void sendString(int sockfd)
 			bzero(send_message, MAXDATASIZE * MAXPAIR);
 
 			// read the message from client and copy it in buffer 
-			read(sockfd, message, sizeof(message)); 
+			int readn = read(sockfd, message, sizeof(message)); 
 
-			printf("%s\n", message);
+			printf("read %d byte of data: %s\n", readn, message);
 
 			char *ptr = strtok(message, "|");
 
@@ -206,7 +206,7 @@ void sendString(int sockfd)
 			else if (operation_code == 3)
 			{
 				int get_index = getKey(splitedMessage[1]);
-				printf("%d",get_index);
+				printf("get index %d \n",get_index);
 				if (get_index < 0){
 					strcpy(send_message,"get fail");
 				}
@@ -239,8 +239,9 @@ void sendString(int sockfd)
 					strcpy(send_message,"add success");
 				}
 			}
-			printf("%s",send_message);
-			write(sockfd, send_message, sizeof(send_message));
+			//printf("%s",send_message);
+			int writen = write(sockfd, send_message, sizeof(send_message));
+			printf("send %d byte of data: %s \n", writen, send_message);
     } 
 }
 
