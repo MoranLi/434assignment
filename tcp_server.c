@@ -45,9 +45,11 @@ int getKey(char* key)
 {
     for (int i = 0; i< MAXPAIR; i++)
     {
-        if (strncmp(key, keys[i], strlen(key)) == 0)
+        if (use[i] == 1)
         {
+					if(strncmp(key, keys[i], strlen(keys[i])) == 0){
             return i;
+					}
         }
     }
     return -1;
@@ -75,7 +77,7 @@ char* getAll()
     {
         if(use[i] == 1){
             bzero(key, sizeof(key)); 
-		    bzero(value, sizeof(value));
+		    		bzero(value, sizeof(value));
             memcpy(key, keys[i], strlen(keys[i]));
             memcpy(value, values[i], strlen(keys[i]));
             strcat(allInfo, key);
@@ -168,75 +170,77 @@ int validOperation(char* operation)
 void sendString(int sockfd)
 {
 	char message[MAXDATASIZE * 3];
-	char send_message[MAXDATASIZE * 3];
+	char send_message[MAXDATASIZE * MAXPAIR];
 	int n;
     // infinite loop for chat 
     for (;;) { 
-		bzero(message, MAXDATASIZE * 3); 
-		bzero(send_message, MAXDATASIZE * 3);
+			bzero(message, MAXDATASIZE * 3); 
+			bzero(send_message, MAXDATASIZE * MAXPAIR);
 
-		// read the message from client and copy it in buffer 
-		read(sockfd, message, sizeof(message)); 
+			// read the message from client and copy it in buffer 
+			read(sockfd, message, sizeof(message)); 
 
-		printf("%s\n", message);
+			printf("%s\n", message);
 
-		char *ptr = strtok(message, "|");
+			char *ptr = strtok(message, "|");
 
-		char *splitedMessage[3];
-		n = 0;
-		while (ptr != NULL)
-		{
-			splitedMessage[n++] = ptr;
-			ptr = strtok(NULL,"|");
-		}
+			char *splitedMessage[3];
+			n = 0;
+			while (ptr != NULL)
+			{
+				splitedMessage[n++] = ptr;
+				ptr = strtok(NULL,"|");
+			}
 
-		int operation_code = validOperation(splitedMessage[0]);
-		int result_code = 0;
-		if (operation_code == 1)
-		{
-			printf("Server Exit...\n"); 
-			break; 
-		}
-		else if (operation_code == 2)
-		{
-			strcpy(send_message,getAll());
-		}
-		else if (operation_code == 3)
-		{
-			int get_index = getKey(splitedMessage[1]);
-			printf("%d",get_index);
-			if (get_index < 0){
-				strcpy(send_message,"get fail");
+			int operation_code = validOperation(splitedMessage[0]);
+			int result_code = 0;
+			if (operation_code == 1)
+			{
+				printf("Server Exit...\n"); 
+				break; 
 			}
-			else{
-				char* get_value = (char*)malloc(MAXDATASIZE);
-				memcpy(get_value,values[get_index], strlen(values[get_index]));
-				strcpy(send_message,get_value);
-				free(get_value);
+			else if (operation_code == 2)
+			{
+				strcpy(send_message,getAll());
 			}
-		}
-		else if (operation_code == 4)
-		{
-			result_code = removeKey(splitedMessage[1]);
-			if(result_code < 0){
-				strcpy(send_message,"remove fail");
+			else if (operation_code == 3)
+			{
+				int get_index = getKey(splitedMessage[1]);
+				printf("%d",get_index);
+				if (get_index < 0){
+					strcpy(send_message,"get fail");
+				}
+				else{
+					char get_value[MAXDATASIZE];
+					bzero(get_value,sizeof(get_value));
+					memcpy(get_value,values[get_index], strlen(values[get_index]));
+					//char *get_value = strdup(values[get_index]);
+					strcpy(send_message,get_value);
+				}
 			}
-			else{
-				strcpy(send_message,"remove success");
+			else if (operation_code == 4)
+			{
+				result_code = removeKey(splitedMessage[1]);
+				if(result_code < 0){
+					strcpy(send_message,"remove fail");
+				}
+				else{
+					strcpy(send_message,"remove success");
+				}
 			}
-		}
-		else if (operation_code == 5)
-		{
-			char* newvalue = duplicateChar(splitedMessage[2]);
-			result_code = addKey(splitedMessage[1], newvalue);
-			if(result_code < 0){
-				strcpy(send_message,"add fail");
+			else if (operation_code == 5)
+			{
+				char* newvalue = duplicateChar(splitedMessage[2]);
+				result_code = addKey(splitedMessage[1], newvalue);
+				if(result_code < 0){
+					strcpy(send_message,"add fail");
+				}
+				else{
+					strcpy(send_message,"add success");
+				}
 			}
-			else{
-				strcpy(send_message,"add success");
-			}
-		}
-		write(sockfd, send_message, sizeof(send_message));
+			printf("%s",send_message);
+			write(sockfd, send_message, sizeof(send_message));
     } 
 }
 

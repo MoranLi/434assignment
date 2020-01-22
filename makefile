@@ -5,7 +5,7 @@
 CC = gcc
 CFLAGS = -g
 CPPFLAGS = -Wall -pedantic
-EXTRA = -m32
+#EXTRA = -m32
 
 .PHONY: all clean
 
@@ -23,16 +23,16 @@ clean:
 ###################
 
 server: server.o
-	$(CC) $(EXTRA) -o server server.o
+	$(CC) -o server server.o
 
 server.o: server.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c server.c -o server.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c server.c -o server.o
 
 client: client.o
-	$(CC) $(EXTRA) -o client client.o
+	$(CC) -o client client.o
 
 client.o: client.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c client.c -o client.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c client.c -o client.o
 	
 ###################
 ##### PartB #######
