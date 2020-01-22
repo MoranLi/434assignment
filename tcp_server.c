@@ -17,7 +17,7 @@
 
 #define PORT 34901  // the port users will be connecting to
 #define BACKLOG 10	 // how many pending connections queue will hold
-#define MAXDATASIZE 80 // max number of bytes of key / value
+#define MAXDATASIZE 40 // max number of bytes of key / value
 #define MAXPAIR 20
 
 char *keys[MAXPAIR];
@@ -170,12 +170,12 @@ int validOperation(char* operation)
 void sendString(int sockfd)
 {
 	char message[MAXDATASIZE * 3];
-	char send_message[MAXDATASIZE * MAXPAIR];
+	char send_message[80 * MAXPAIR];
 	int n;
     // infinite loop for chat 
     for (;;) { 
 			bzero(message, MAXDATASIZE * 3); 
-			bzero(send_message, MAXDATASIZE * MAXPAIR);
+			bzero(send_message, MAXDATASIZE * 3);
 
 			// read the message from client and copy it in buffer 
 			int readn = read(sockfd, message, sizeof(message)); 
