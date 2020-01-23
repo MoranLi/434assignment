@@ -66,11 +66,11 @@ int validOperation(char* operation)
 
 void sendString(int sockfd)
 {
-	char operation[MAXDATASIZE];
+	char operation[MAXOPERATIONSIZE];
 	char key[MAXDATASIZE];
 	char value[MAXDATASIZE];
 	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
-	char recv_message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
+	char recv_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
 	char socket_buffer[MAXDATASIZE];
 	int n;
 

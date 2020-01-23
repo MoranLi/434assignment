@@ -72,15 +72,15 @@ int removeKey(char* key)
 char* getAll()
 {
     char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
-    char key[MAXDATASIZE * 2];
+    char key[MAXDATASIZE];
 	char value[MAXDATASIZE * 2];
     for (int i = 0; i< MAXPAIR; i++)
     {
         if(use[i] == 1){
             bzero(key, sizeof(key)); 
 		    bzero(value, sizeof(value));
-            memcpy(key, keys[i], strlen(key));
-            memcpy(value, values[i], strlen(value));
+            memcpy(key, keys[i], strlen(keys[i]) * sizeof(char));
+            memcpy(value, values[i], strlen(values[i]) * sizeof(char));
             strcat(allInfo, key);
             strcat(allInfo,":");
             strcat(allInfo, value);
@@ -171,7 +171,7 @@ int validOperation(char* operation)
 void sendString(int sockfd)
 {
 	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
-	char send_message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
+	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
 	int n;
     // infinite loop for chat 
     for (;;) { 
