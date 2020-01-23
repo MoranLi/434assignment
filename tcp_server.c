@@ -17,7 +17,8 @@
 
 #define PORT 34901  // the port users will be connecting to
 #define BACKLOG 10	 // how many pending connections queue will hold
-#define MAXDATASIZE 40 // max number of bytes of key / value
+#define MAXDATASIZE 40 // max length of key / value
+#define MAXOPERATIONSIZE 8 // max length of operation
 #define MAXPAIR 20
 
 char *keys[MAXPAIR];
@@ -71,19 +72,19 @@ int removeKey(char* key)
 char* getAll()
 {
     char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
-    char key[MAXDATASIZE];
-	char value[MAXDATASIZE];
+    char key[MAXDATASIZE * 2];
+	char value[MAXDATASIZE * 2];
     for (int i = 0; i< MAXPAIR; i++)
     {
         if(use[i] == 1){
             bzero(key, sizeof(key)); 
-		    		bzero(value, sizeof(value));
-            memcpy(key, keys[i], strlen(keys[i]));
-            memcpy(value, values[i], strlen(keys[i]));
+		    bzero(value, sizeof(value));
+            memcpy(key, keys[i], strlen(key));
+            memcpy(value, values[i], strlen(value));
             strcat(allInfo, key);
             strcat(allInfo,":");
             strcat(allInfo, value);
-            strcat(allInfo, "\t");
+            strcat(allInfo, ";");
         }
     }
     return allInfo;
@@ -91,7 +92,7 @@ char* getAll()
 
 char *duplicateChar(char *value)
 {
-	char newValue[MAXDATASIZE];
+	char newValue[MAXDATASIZE*2];
 	int j = 0;
 	for(int i = 0; i < strlen(value); i ++)
 	{
@@ -104,7 +105,7 @@ char *duplicateChar(char *value)
 		}
 	}
 	newValue[j] = '\0';
-	char* somevalue =  (char*)malloc(MAXDATASIZE);
+	char* somevalue =  (char*)malloc(MAXDATASIZE*2);
 	strcpy(somevalue, newValue);
 	return somevalue;
 }
@@ -169,18 +170,17 @@ int validOperation(char* operation)
 
 void sendString(int sockfd)
 {
-	char message[MAXDATASIZE * 3];
-	char send_message[80 * MAXPAIR];
+	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
+	char send_message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
 	int n;
     // infinite loop for chat 
     for (;;) { 
-			bzero(message, MAXDATASIZE * 3); 
-			bzero(send_message, MAXDATASIZE * 3);
+			bzero(message, sizeof(message)); 
+			bzero(send_message, sizeof(send_message));
 
 			// read the message from client and copy it in buffer 
-			int readn = read(sockfd, message, sizeof(message)); 
-
-			printf("read %d byte of data: %s\n", readn, message);
+			int readn = recv(sockfd, message, sizeof(message),0);
+			printf("receive %d byte of data: %s\n", readn, message);
 
 			char *ptr = strtok(message, "|");
 
@@ -231,6 +231,7 @@ void sendString(int sockfd)
 			else if (operation_code == 5)
 			{
 				char* newvalue = duplicateChar(splitedMessage[2]);
+				printf("duplicated string: %s \n",newvalue);
 				result_code = addKey(splitedMessage[1], newvalue);
 				if(result_code < 0){
 					strcpy(send_message,"add fail");
@@ -240,8 +241,10 @@ void sendString(int sockfd)
 				}
 			}
 			//printf("%s",send_message);
-			int writen = write(sockfd, send_message, sizeof(send_message));
-			printf("send %d byte of data: %s \n", writen, send_message);
+			//int writen = write(sockfd, send_message, sizeof(send_message));
+			//printf("send %d byte of data: %s \n", writen, send_message);
+			int writen = send(sockfd, send_message, sizeof(send_message),0);
+			printf("send %d byte of data: %s\n", writen, send_message);
     } 
 }
 

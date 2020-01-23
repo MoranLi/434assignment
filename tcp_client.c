@@ -17,6 +17,8 @@
 #define CLIENT_PORT "34901" // the CLIENT_PORT client will be connecting to 
 
 #define MAXDATASIZE 40 // max number of bytes of key / value
+#define MAXOPERATIONSIZE 8 // max length of operation
+#define MAXPAIR 20
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -67,8 +69,9 @@ void sendString(int sockfd)
 	char operation[MAXDATASIZE];
 	char key[MAXDATASIZE];
 	char value[MAXDATASIZE];
-	char message[MAXDATASIZE * 3];
-	char recv_message[80 * 20];
+	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
+	char recv_message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
+	char socket_buffer[MAXDATASIZE];
 	int n;
 
 	for (;;) {
@@ -118,14 +121,13 @@ void sendString(int sockfd)
 			strcat(message, value);
 
 		}
+		strcat(message,"\n");
 
-		int writen = write(sockfd, message, sizeof(message));
+		int writen = send(sockfd, message, sizeof(message),0);
 		printf("send %d byte of data: %s\n", writen, message);
 		//bzero(message, sizeof(message));
-		int readn = read(sockfd, recv_message, sizeof(recv_message));
+		int readn = recv(sockfd, recv_message, sizeof(recv_message),0);
 		printf("receive %d byte of data: %s\n", readn, recv_message);
-
-		printf("From Server: %s\n", recv_message);
 		if(operation_code == 1)
 		{
 			printf("Client Exit...\n"); 
