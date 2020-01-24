@@ -230,9 +230,9 @@ void sendString(int sockfd)
 			}
 			else if (operation_code == 5)
 			{
-				char* newvalue = duplicateChar(splitedMessage[2]);
-				printf("duplicated string: %s \n",newvalue);
-				result_code = addKey(splitedMessage[1], newvalue);
+				//char* newvalue = duplicateChar(splitedMessage[2]);
+				printf("duplicated string: %s \n",splitedMessage[2]);
+				result_code = addKey(splitedMessage[1], splitedMessage[2]);
 				if(result_code < 0){
 					strcpy(send_message,"add fail");
 				}
