@@ -14,11 +14,14 @@
 
 #include <arpa/inet.h>
 
-#define CLIENT_PORT "34902" // the CLIENT_PORT client will be connecting to 
+#define PORT 34903 // the CLIENT_PORT client will be connecting to 
 
 #define MAXDATASIZE 40 // max number of bytes of key / value
 #define MAXOPERATIONSIZE 8 // max length of operation
 #define MAXPAIR 20
+
+int serversocketfd;
+int clientsocketfd;
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -64,27 +67,80 @@ int validOperation(char* operation)
 	}
 }
 
-void sendString(int sockfd)
+char *duplicateChar(char *value)
 {
-	char send_message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
-	char recv_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
+	char newValue[MAXDATASIZE*2];
+	int j = 0;
+	for(int i = 0; i < strlen(value); i ++)
+	{
+		newValue[j] = value[i];
+		j++;
+		if (value[i] == 'c' || value[i] == 'm' || value[i] == 'p' || value[i] == 't')
+		{
+			newValue[j] = value[i];
+			j++;
+		}
+	}
+	newValue[j] = '\0';
+	char* somevalue =  (char*)malloc(MAXDATASIZE*2);
+	strcpy(somevalue, newValue);
+	return somevalue;
+}
 
-	for (;;) {
-		bzero(send_message, sizeof(send_message));
-		bzero(recv_message, sizeof(recv_message));
+int generateserversocket(){
+  int sockfd; 
+	socklen_t len;
+	struct sockaddr_in servaddr, cli; 
 
-		int writen = send(sockfd, send_message, sizeof(send_message),0);
-		printf("send %d byte of data: %s\n", writen, send_message);
-		//bzero(message, sizeof(message));
-		int readn = recv(sockfd, recv_message, sizeof(recv_message),0);
-		printf("receive %d byte of data: %s\n", readn, recv_message);
+	// socket create and verification 
+	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	if (sockfd == -1) { 
+			printf("socket creation failed...\n"); 
+			exit(0); 
+	} 
+	else
+			printf("Socket successfully created..\n"); 
+	bzero(&servaddr, sizeof(servaddr)); 
+
+	// assign IP, PORT 
+	servaddr.sin_family = AF_INET; 
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
+	servaddr.sin_port = htons(PORT); 
+
+	// Binding newly created socket to given IP and verification 
+	if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) { 
+			printf("socket bind failed...\n"); 
+			exit(0); 
+	} 
+	else{
+			printf("Socket successfully binded..\n"); 
 	}
 
+	// Now server is ready to listen and verification 
+	if ((listen(sockfd, 5)) != 0) { 
+			printf("Listen failed...\n"); 
+			exit(0); 
+	} 
+	else
+			printf("Server listening..\n"); 
+	len = sizeof(cli); 
+
+	// Accept the data packet from client and verification 
+	serversocketfd = accept(sockfd, (struct sockaddr*)&cli, &len); 
+	if (serversocketfd < 0) { 
+			printf("server acccept failed...\n"); 
+			exit(0); 
+	} 
+	else{
+			printf("server acccept the client...\n"); 
+	}
+
+	return 0;
 
 }
 
-int generatesocket(char* hostname, char* port){
-    int sockfd;  
+int generateclientsocket(char* hostname, char* port)
+{
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
@@ -100,15 +156,15 @@ int generatesocket(char* hostname, char* port){
 
 	// loop through all the results and connect to the first we can
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+		if ((clientsocketfd = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
 			perror("client: socket");
 			continue;
 		}
 
-		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+		if (connect(clientsocketfd, p->ai_addr, p->ai_addrlen) == -1) {
 			perror("client: connect");
-			close(sockfd);
+			close(clientsocketfd);
 			continue;
 		}
 
@@ -124,78 +180,99 @@ int generatesocket(char* hostname, char* port){
 			s, sizeof s);
 	printf("client: connecting to %s\n", s);
 
-    freeaddrinfo(servinfo);
+	freeaddrinfo(servinfo); // all done with this structure
 
-    return sockfd;
+	return 0;
+}
+
+
+void sendServerString()
+{
+	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
+	char recv_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
+
+	for (;;) {
+		bzero(send_message, sizeof(send_message));
+		bzero(recv_message, sizeof(recv_message));
+
+		int readn = recv(serversocketfd, recv_message, sizeof(recv_message),0);
+		printf("receive %d byte of data: %s\n", readn, recv_message);
+		strncpy(send_message, recv_message, strlen(recv_message));
+
+		int writen = send(clientsocketfd, send_message, sizeof(send_message),0);
+		if (writen == -1){
+			printf("Oh dear, something went wrong with send()! %s\n", strerror(errno));
+		}
+		printf("send %d byte of data to server: %s\n", writen, send_message);
+	}
+
+}
+
+void sendClientString(){
+	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
+	char recv_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
+
+	for (;;) {
+		bzero(send_message, sizeof(send_message));
+		bzero(recv_message, sizeof(recv_message));
+
+		int readn = recv(clientsocketfd, recv_message, sizeof(recv_message),0);
+		printf("receive %d byte of data: %s\n", readn, recv_message);
+		if(strstr(recv_message,";") != NULL){
+			char *ptr = strtok(recv_message, ";");
+			while (ptr != NULL)
+			{
+				char* tmp = strdup(ptr);
+				char *keyptr = strtok(tmp, ":");
+				strcat(send_message,keyptr);
+				strcat(send_message,":");
+				keyptr = strtok(NULL, ":");
+				char* newvalue = duplicateChar(keyptr);
+				strcat(send_message,newvalue);
+				strcat(send_message, ";");
+				ptr = strtok(NULL,";");
+			}
+		}
+		else{
+			strncpy(send_message, recv_message, strlen(recv_message));
+		}
+
+		int writen = send(serversocketfd, send_message, sizeof(send_message),0);
+		if (writen == -1){
+			printf("Oh dear, something went wrong with send()! %s\n", strerror(errno));
+		}
+		printf("send %d byte of data to client: %s\n", writen, send_message);
+		
+	}
+
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc != 5) {
+	if (argc != 3) {
 	    fprintf(stderr,"usage: proxy server_hostname server_port");
 	    exit(1);
 	}  
 
-    int serverSocket = generateSocket(argv[1], argv[2]);
+  int serversuccess = generateserversocket();
 
-    int sockfd, connfd; 
-	socklen_t len;
-    struct sockaddr_in servaddr, cli; 
-  
-    // socket create and verification 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-    if (sockfd == -1) { 
-        printf("socket creation failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Socket successfully created..\n"); 
-    bzero(&servaddr, sizeof(servaddr)); 
-  
-    // assign IP, PORT 
-    servaddr.sin_family = AF_INET; 
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
-    servaddr.sin_port = htons(PORT); 
-  
-    // Binding newly created socket to given IP and verification 
-    if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) { 
-        printf("socket bind failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Socket successfully binded..\n"); 
-  
-    // Now server is ready to listen and verification 
-    if ((listen(sockfd, 5)) != 0) { 
-        printf("Listen failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Server listening..\n"); 
-    len = sizeof(cli); 
-  
-    // Accept the data packet from client and verification 
-    connfd = accept(sockfd, (struct sockaddr*)&cli, &len); 
-    if (connfd < 0) { 
-        printf("server acccept failed...\n"); 
-        exit(0); 
-    } 
-    else{
-        printf("server acccept the client...\n"); 
+	int clientsuccess = generateclientsocket(argv[1], argv[2]);
+
+	printf("surver socket status %d, client socket status %d \n", serversuccess, clientsuccess);
+
+	// Function for chatting between client and server 
+	if(!fork()){
+		sendServerString(); 
+	}
+
+	if(!fork()) {
+		sendClientString();
 	}
 
 
-	 // all done with this structure
-
-	if(!fork()){
-        sendString(serverSocket);
-        close(serverSocket);
-        exit(0);
-    }
-
-    sendString(sockfd);
-
-    close(sockfd);
+	// After chatting close the socket 
+	close(serversocketfd);
+	close(clientsocketfd); 
 
 	return 0;
 }
