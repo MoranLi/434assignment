@@ -5,35 +5,39 @@
 CC = gcc
 CFLAGS = -g
 CPPFLAGS = -Wall -pedantic
-#EXTRA = -m32
 
 .PHONY: all clean
 
-all: clean tcp_server tcp_client
+all: clean udp_proxy udp_server udp_client
 
-p1: tcp_client tcp_server
+p1: udp_server udp_client
 
-p2: tcp_client tcp_server tcp_proxy
+p2: udp_server udp_proxy udp_client
+
 
 clean:
-	rm -f *.o *.a tcp_server tcp_client tcp_rpoxy
+	rm -f *.o *.a udp_server udp_proxy udp_client queue
 
-tcp_server: tcp_server.o
-	$(CC) $(EXTRA) -o tcp_server tcp_server.o
+udp_server: udp_server.o
+	$(CC) $(EXTRA) -o udp_server udp_server.o
 
-tcp_server.o: tcp_server.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c tcp_server.c -o tcp_server.o
+udp_server.o: udp_server.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_server.c -o udp_server.o
 
-tcp_client: tcp_client.o
-	$(CC) $(EXTRA) -o tcp_client tcp_client.o
+udp_client: udp_client.o
+	$(CC) $(EXTRA) -o udp_client udp_client.o
 
-tcp_client.o: tcp_client.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c tcp_client.c -o tcp_client.o
+udp_client.o: udp_client.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_client.c -o udp_client.o
 
+udp_proxy: udp_proxy.o
+	$(CC) $(EXTRA) -o udp_proxy udp_proxy.o
 
-tcp_proxy: tcp_proxy.o
-	$(CC) $(EXTRA) -o tcp_proxy tcp_proxy.o
+udp_proxy.o: udp_proxy.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_proxy.c -o udp_proxy.o
 
-tcp_proxy.o: tcp_proxy.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c tcp_proxy.c -o tcp_proxy.o
+queue: queue.o
+	$(CC) $(EXTRA) -o queue queue.o
 
+queue.o: queue.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c queue.c -o queue.o

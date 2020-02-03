@@ -14,7 +14,7 @@
 
 #include <arpa/inet.h>
 
-#define PORT 34903 // the CLIENT_PORT client will be connecting to 
+#define PORT 34907 // the CLIENT_PORT client will be connecting to 
 
 #define MAXDATASIZE 40 // max number of bytes of key / value
 #define MAXOPERATIONSIZE 8 // max length of operation
@@ -22,6 +22,8 @@
 
 int serversocketfd;
 int clientsocketfd;
+int serverlen;
+struct sockaddr_in serveraddr;
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -141,47 +143,32 @@ int generateserversocket(){
 
 int generateclientsocket(char* hostname, char* port)
 {
-	struct addrinfo hints, *servinfo, *p;
-	int rv;
-	char s[INET6_ADDRSTRLEN];
+	int portno;
+	struct hostent *server;
 
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+	portno = atoi(port);
 
-	if ((rv = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
+	/* socket: create the socket */
+	serversocketfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (serversocketfd < 0) 
+			perror("ERROR opening socket");
+
+	/* gethostbyname: get the server's DNS entry */
+	server = gethostbyname(hostname);
+	if (server == NULL) {
+			fprintf(stderr,"ERROR, no such host as %s\n", hostname);
+			exit(0);
 	}
 
-	// loop through all the results and connect to the first we can
-	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if ((clientsocketfd = socket(p->ai_family, p->ai_socktype,
-				p->ai_protocol)) == -1) {
-			perror("client: socket");
-			continue;
-		}
+	/* build the server's Internet address */
+	bzero((char *) &serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, 
+	(char *)&serveraddr.sin_addr.s_addr, server->h_length);
+	serveraddr.sin_port = htons(portno);
 
-		if (connect(clientsocketfd, p->ai_addr, p->ai_addrlen) == -1) {
-			perror("client: connect");
-			close(clientsocketfd);
-			continue;
-		}
-
-		break;
-	}
-
-	if (p == NULL) {
-		fprintf(stderr, "client: failed to connect\n");
-		return 2;
-	}
-
-	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-			s, sizeof s);
-	printf("client: connecting to %s\n", s);
-
-	freeaddrinfo(servinfo); // all done with this structure
-
+	/* send the message to the server */
+	serverlen = sizeof(serveraddr);
 	return 0;
 }
 
@@ -194,8 +181,8 @@ void sendServerString()
 	for (;;) {
 		bzero(send_message, sizeof(send_message));
 		bzero(recv_message, sizeof(recv_message));
-
-		int readn = recv(serversocketfd, recv_message, sizeof(recv_message),0);
+	
+		int readn = recvfrom(serversocketfd, recv_message, sizeof(recv_message),0, &serveraddr, &serverlen);
 		printf("receive %d byte of data: %s\n", readn, recv_message);
 		strncpy(send_message, recv_message, strlen(recv_message));
 
@@ -237,7 +224,7 @@ void sendClientString(){
 			strncpy(send_message, recv_message, strlen(recv_message));
 		}
 
-		int writen = send(serversocketfd, send_message, sizeof(send_message),0);
+		int writen = sendto(serversocketfd, send_message, sizeof(send_message),0, &serveraddr, serverlen);
 		if (writen == -1){
 			printf("Oh dear, something went wrong with send()! %s\n", strerror(errno));
 		}
