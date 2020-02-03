@@ -5,6 +5,7 @@
 CC = gcc
 CFLAGS = -g
 CPPFLAGS = -Wall -pedantic
+PTHREAD = -lpthread
 
 .PHONY: all clean
 
@@ -19,25 +20,25 @@ clean:
 	rm -f *.o *.a udp_server udp_proxy udp_client queue
 
 udp_server: udp_server.o
-	$(CC) $(EXTRA) -o udp_server udp_server.o
+	$(CC) -o udp_server udp_server.o
 
 udp_server.o: udp_server.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_server.c -o udp_server.o
+	$(CC) $(CFLAGS) $(CPPFLAGS)  -c udp_server.c -o udp_server.o
 
 udp_client: udp_client.o
-	$(CC) $(EXTRA) -o udp_client udp_client.o
+	$(CC) -o udp_client udp_client.o $(PTHREAD)
 
 udp_client.o: udp_client.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_client.c -o udp_client.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c udp_client.c -o udp_client.o $(PTHREAD)
 
 udp_proxy: udp_proxy.o
-	$(CC) $(EXTRA) -o udp_proxy udp_proxy.o
+	$(CC) -o udp_proxy udp_proxy.o
 
 udp_proxy.o: udp_proxy.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c udp_proxy.c -o udp_proxy.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c udp_proxy.c -o udp_proxy.o
 
 queue: queue.o
-	$(CC) $(EXTRA) -o queue queue.o
+	$(CC) -o queue queue.o
 
 queue.o: queue.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA) -c queue.c -o queue.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c queue.c -o queue.o
