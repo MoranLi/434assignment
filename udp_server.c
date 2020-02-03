@@ -54,6 +54,18 @@ int main(int argc, char **argv)
 	char getmessage[10];
 	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
 
+	if(argc != 2){
+		fprintf(stderr, "usage: %s <possibiality to loss>\n", argv[0]);
+        exit(0);
+	}
+
+	int possible = atoi(argv[1]);
+
+	if(possible >= 100){
+		fprintf(stderr, "can not have possibiality >= 100\n");
+        exit(0);
+	}
+
 	/* 
 	* socket: create the parent socket 
 	*/
@@ -99,9 +111,10 @@ int main(int argc, char **argv)
 		bzero(getmessage, sizeof(getmessage));
 		bzero(send_message, sizeof(send_message));
 
-		int readn = recvfrom(sockfd, message, sizeof(message), 0,
+		recvfrom(sockfd, message, sizeof(message), 0,
 							 (struct sockaddr *)&clientaddr, &clientlen);
-		printf("receive %d byte of data\n", readn);
+		// int readn = recvfrom(sockfd, message, sizeof(message), 0, (struct sockaddr *)&clientaddr, &clientlen);
+		// printf("receive %d byte of data\n", readn);
 
 		/* 
 		* gethostbyaddr: determine who sent the datagram
@@ -113,8 +126,7 @@ int main(int argc, char **argv)
 		hostaddrp = inet_ntoa(clientaddr.sin_addr);
 		if (hostaddrp == NULL)
 			error("ERROR on inet_ntoa\n");
-		printf("server received datagram from %s (%s)\n",
-			   hostp->h_name, hostaddrp);
+		//printf("server received datagram from %s (%s)\n", hostp->h_name, hostaddrp);
 
 		char *ptr = strtok(message, "|");
 
@@ -130,36 +142,29 @@ int main(int argc, char **argv)
 
 		printf("receive id:%d, message:%s", id, splitedMessage[1]);
 
-		n = 0;
-		printf("enter message start with Y means receive success, else enter message you want to restart with: ");
-		while ((getmessage[n++] = getchar()) != '\n')
-			;
-
-		printf("entered message:%s \n", getmessage);
-
-		if (strncmp(getmessage, "Y", 1) == 0)
-		{
-			strcpy(send_message, "Y");
-		}
-		else
-		{
-			snprintf(send_message, sizeof(send_message), "%d", atoi(getmessage));
-		}
-
-		/* 
-		* sendto: echo the input back to the client 
-		*/
-		int writen = sendto(sockfd, send_message, strlen(send_message), 0,
-							(struct sockaddr *)&clientaddr, clientlen);
-		if (writen < 0)
-			error("ERROR in sendto");
-		printf("send %d byte of message %s \n", writen, send_message);
-
 		if (strncmp("quit", splitedMessage[1], 4) == 0)
 		{
 			printf("Server Exit...\n");
 			break;
 		}
+
+		n = 0;
+		printf("enter message start with Y means receive success, else fail: ");
+		while ((getmessage[n++] = getchar()) != '\n')
+			;
+
+		//printf("entered message:%s \n", getmessage);
+
+		if (strncmp(getmessage, "Y", 1) == 0)
+		{
+			int num = (rand() %  (100 - 0 + 1)) + 0;
+			if (num < possible){ 
+				snprintf(send_message, sizeof(send_message), "%d", id);
+				int writen = sendto(sockfd, send_message, strlen(send_message), 0,
+									(struct sockaddr *)&clientaddr, clientlen);
+				//printf("send %d byte of message %s \n", writen, send_message);
+			}
+		}		
 	}
 	return 0;
 }
