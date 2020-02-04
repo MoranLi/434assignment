@@ -172,12 +172,12 @@ void* clientThread(void *vargp)
     strcat(sendmessage, "|");
     strcat(sendmessage, copymessage);
 
-    sendto(sockfd, sendmessage, sizeof(sendmessage), 0, (struct sockaddr *)&serveraddr, serverlen);
-    //int writen = sendto(sockfd, sendmessage, sizeof(sendmessage), 0, (struct sockaddr *)&serveraddr, serverlen);
-    //printf("send %d byte of data: %s\n", writen, sendmessage);
+    //sendto(sockfd, sendmessage, sizeof(sendmessage), 0, (struct sockaddr *)&serveraddr, serverlen);
+    int writen = sendto(sockfd, sendmessage, sizeof(sendmessage), 0, (struct sockaddr *)&serveraddr, serverlen);
+    printf("send %d byte of data: %s\n", writen, sendmessage);
 
     int readn = recvfrom(sockfd, receivemessage, sizeof(receivemessage), 0, (struct sockaddr *)&serveraddr, &serverlen);
-    //printf("receive %d byte of data: %s\n", readn, receivemessage);
+    printf("receive %d byte of data: %s\n", readn, receivemessage);
     if (readn < 0){
         pthread_t pid;
         pthread_create(&pid, NULL, clientThread, vargp);

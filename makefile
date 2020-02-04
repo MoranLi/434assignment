@@ -32,13 +32,7 @@ udp_client.o: udp_client.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c udp_client.c -o udp_client.o $(PTHREAD)
 
 udp_proxy: udp_proxy.o
-	$(CC) -o udp_proxy udp_proxy.o
+	$(CC) -o udp_proxy udp_proxy.o $(PTHREAD)
 
 udp_proxy.o: udp_proxy.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c udp_proxy.c -o udp_proxy.o
-
-queue: queue.o
-	$(CC) -o queue queue.o
-
-queue.o: queue.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c queue.c -o queue.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c udp_proxy.c -o udp_proxy.o $(PTHREAD)

@@ -16,7 +16,7 @@
 #define BUFSIZE 1024
 #define PORT 34906
 #define BACKLOG 10		   // how many pending connections queue will hold
-#define MAXDATASIZE 40	 // max length of key / value
+#define MAXDATASIZE 256	 // max length of key / value
 #define MAXOPERATIONSIZE 8 // max length of operation
 #define MAXPAIR 20
 
@@ -50,6 +50,7 @@ int main(int argc, char **argv)
 	char *hostaddrp;			   /* dotted decimal host addr string */
 	int optval;					   /* flag value for setsockopt */
 	int n;						   /* message byte size */
+	int lastID = 0;
 	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
 	char getmessage[10];
 	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
@@ -139,8 +140,13 @@ int main(int argc, char **argv)
 		}
 
 		int id = atoi(splitedMessage[0]);
+		
+		if (id != lastID){
+			printf("Error Label");
+		}
 
 		printf("receive id:%d, message:%s", id, splitedMessage[1]);
+
 
 		if (strncmp("quit", splitedMessage[1], 4) == 0)
 		{
@@ -157,13 +163,14 @@ int main(int argc, char **argv)
 
 		if (strncmp(getmessage, "Y", 1) == 0)
 		{
-			int num = (rand() %  (100 - 0 + 1)) + 0;
-			if (num < possible){ 
+			//int num = (rand() %  (100 - 0 + 1)) + 0;
+			//if (num < possible){ 
+				lastID += 1;
 				snprintf(send_message, sizeof(send_message), "%d", id);
-				int writen = sendto(sockfd, send_message, strlen(send_message), 0,
+				sendto(sockfd, send_message, strlen(send_message), 0,
 									(struct sockaddr *)&clientaddr, clientlen);
 				//printf("send %d byte of message %s \n", writen, send_message);
-			}
+			//}
 		}		
 	}
 	return 0;
