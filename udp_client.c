@@ -179,12 +179,25 @@ void* clientThread(void *vargp)
     int readn = recvfrom(sockfd, receivemessage, sizeof(receivemessage), 0, (struct sockaddr *)&serveraddr, &serverlen);
     printf("receive %d byte of data: %s\n", readn, receivemessage);
     if (readn < 0){
+        for (int i = *size; i > -1; i --){
+            if(send_id - i > 0){
+                int new_id = send_id -= 1;
+                struct arg_struct args = *((struct arg_struct *)vargp);
+                args.send_id = &new_id;
+                pthread_t pid;
+                pthread_create(&pid, NULL, clientThread,  (void*)&args);
+                pthread_join(pid, NULL);
+            }
+        }
         pthread_t pid;
         pthread_create(&pid, NULL, clientThread, vargp);
         pthread_join(pid, NULL);
     }
     else {
-        removeUse(use, index);
+        if(send_id >= *size){
+            int removeindex = getKey(keys, use, *size, send_id - *size);
+            removeUse(use, removeindex);
+        }
     }
     *queue_lock = 0;
     pthread_exit(NULL);
@@ -254,7 +267,7 @@ int main(int argc, char **argv)
 
     hostname = argv[1];
     portno = atoi(argv[2]);
-    int size = atoi(argv[3]);
+    int size = atoi(argv[3]) * 2;
     int timeout = atoi(argv[4]);
 
     int keys[size];
