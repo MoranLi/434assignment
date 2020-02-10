@@ -1,0 +1,37 @@
+Design:
+
+The udp_client contains following fields:
+    struct arg_struct
+        struct fro store arguments pass to thread
+    int add(int keys[], char *values[], int use[], int *id, int *current_size, int size, char *value)
+        add message to message queue(map), keys store id of message, values store message content, use indicated if this index is in use
+    void removeUse(int use[], int index)
+        set use[index] = 0, indicated this index is not in use so further message can store here
+    int getKey(int keys[], int use[], int size, int key)
+        get message id by search message in keys
+    char *getall(int keys[], char *values[], int size, int use[])
+        helper function for print all message currently in queue
+    void error(char *msg)
+        print error message and exit
+    void* clientThread(void *vargp)
+        function provided to thread to run, use void* as return type and void* as arguments to follow format requiremtn for pthread
+            1. read message from arguments
+            2. create socket to send message
+                2.1 set timeout for socket
+            3. get message from values, add id header
+            4. receive until timeout
+                4.1 if received reply, means server successfully receive message, delete number[id-n] message
+                4.2 else resend last n message (base on solution fro last assignment)
+            5. exit thread
+    void* getInputThread(void *vargp)
+        function provided to thread to run, use void* as return type and void* as arguments to follow format requiremtn for pthread
+            1. read user input 
+            2. create a thread to send user input
+            3. when entered "quit", quit
+    int main
+        1.create global values(keys, use, values, size, timeout .....)
+        2.create arg_struct for pass value to thread
+        3. create socket for receive
+        4. when receive, create a thread to forward message to server
+
+    

@@ -36,7 +36,7 @@ struct arg_struct
 
 int add(int keys[], char *values[], int use[], int *id, int *current_size, int size, char *value)
 {
-    if (*current_size == size)
+    if (*current_size == size * 2)
     {
         printf("Queue full\n");
         return -1;
@@ -197,6 +197,8 @@ void* clientThread(void *vargp)
         if(send_id >= *size){
             int removeindex = getKey(keys, use, *size, send_id - *size);
             removeUse(use, removeindex);
+            int current_size = *(args->current_size);
+            current_size -= 1;
         }
     }
     *queue_lock = 0;

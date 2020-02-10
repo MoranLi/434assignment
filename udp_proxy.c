@@ -40,7 +40,7 @@ struct arg_struct
 
 int add(int keys[], char *values[], int use[], int *id, int *current_size, int size, char *value)
 {
-    if (*current_size == size)
+    if (*current_size == size * 2)
     {
         printf("Queue full\n");
         return -1;
@@ -175,18 +175,33 @@ void *clientThread(void *vargp)
 
     int readn = recvfrom(sockfd, receivemessage, sizeof(receivemessage), 0, (struct sockaddr *)&serveraddr, &serverlen);
     printf("receive %d byte of data to server: %s\n", readn, receivemessage);
-    if (readn < 0)
-    {
+    if (readn < 0){
+        for (int i = *size; i > -1; i --){
+            if(send_id - i > 0){
+                int new_id = send_id -= 1;
+                struct arg_struct args = *((struct arg_struct *)vargp);
+                args.send_id = &new_id;
+                pthread_t pid;
+                pthread_create(&pid, NULL, clientThread,  (void*)&args);
+                pthread_join(pid, NULL);
+            }
+        }
         pthread_t pid;
         pthread_create(&pid, NULL, clientThread, vargp);
         pthread_join(pid, NULL);
     }
     else
     {
-        removeUse(use, index);
-        int writen2 = sendto(client_sockfd, receivemessage, strlen(receivemessage), 0,
+        if(send_id >= *size){
+            int removeindex = getKey(keys, use, *size, send_id - *size);
+            removeUse(use, removeindex);
+            int current_size = *(args->current_size);
+            current_size -= 1;
+            int writen2 = sendto(client_sockfd, receivemessage, strlen(receivemessage), 0,
                (struct sockaddr *)&clientaddr, clientlen);
-        printf("send %d byte of data to client: %s\n", writen2, receivemessage);
+            printf("send %d byte of data to client: %s\n", writen2, receivemessage);
+        }
+        removeUse(use, index);
     }
     *queue_lock = 0;
     pthread_exit(NULL);
@@ -208,7 +223,7 @@ int main(int argc, char **argv)
     selfport = atoi(argv[1]);
     hostname = argv[2];
     portno = atoi(argv[3]);
-    int size = atoi(argv[4]);
+    int size = atoi(argv[4]) * 2;
 
     int keys[size];
     char *values[size];
@@ -298,21 +313,6 @@ int main(int argc, char **argv)
         hostaddrp = inet_ntoa(clientaddr.sin_addr);
         if (hostaddrp == NULL)
             error("ERROR on inet_ntoa\n");
-        //printf("server received datagram from %s (%s)\n", hostp->h_name, hostaddrp);
-/*
-        char *ptr = strtok(message, "|");
-
-        char *splitedMessage[2];
-        n = 0;
-        while (ptr != NULL)
-        {
-            splitedMessage[n++] = ptr;
-            ptr = strtok(NULL, "|");
-        }
-
-        int getid = atoi(splitedMessage[0]);
-
-        printf("receive getid:%d, message:%s", getid, splitedMessage[1]); */
         printf("receive message:%s", message);
 
         clientargs.clientlen = clientlen;

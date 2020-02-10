@@ -1,0 +1,18 @@
+Design:
+
+The udp_client contains following fields:
+    void *get_in_addr(struct sockaddr *sa)
+        helper function fro create socket
+    void error(char *msg)
+        print error message and exit
+    int main
+        1. create socket for receive
+        2. when receive , ask user to input
+            2.1 if input start with "Y"
+                2.1.1 use a random to mock rtandom failure base on precentage argument
+                    2.1.1.1 if all pass, send reply
+                    2.1.1.2 do not reply and wait for next message
+            2.2 else  
+                do not reply and wait for next message
+
+    
