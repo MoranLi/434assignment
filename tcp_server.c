@@ -1,307 +1,240 @@
-/*
-** server.c -- a stream socket server demo
-*/
+#include <arpa/inet.h> 
+#include <errno.h> 
+#include <netinet/in.h> 
+#include <signal.h> 
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <sys/socket.h> 
+#include <sys/types.h> 
+#include <unistd.h> 
+#define MAXLINE 1024 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
-
-#define PORT 34901  // the port users will be connecting to
-#define BACKLOG 10	 // how many pending connections queue will hold
-#define MAXDATASIZE 40 // max length of key / value
-#define MAXOPERATIONSIZE 8 // max length of operation
-#define MAXPAIR 20
-
-char *keys[MAXPAIR];
-char *values[MAXPAIR];
-int use[MAXPAIR]= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-int addKey(char* key, char* value)
-{
-    for (int i = 0; i< MAXPAIR; i++)
-    {
-        if (use[i] == 0)
-        {
-            keys[i] = (char*)malloc(strlen(key));
-            values[i] = (char*)malloc(strlen(value));
-            memcpy(keys[i], key, strlen(key));
-            memcpy(values[i], value, strlen(value));
-            use[i] = 1;
-            return 1;
+char* send_string(char* server_name, int* node_distance, char* node_name[],  int connected, int send_to_index, int is_server){
+    char message[1024];
+    bzero(message, sizeof(message));
+    strcat(message, server_name);
+    strcat(message, ";");
+    for(int i = 0; i<connected; i++){
+        if(i == send_to_index && is_server == 1){
+            continue;
         }
+        strcat(message, node_name[i]);
+        strcat(message, ":");
+        char distance_buffer[3];
+        sprintf(distance_buffer,"%d",node_distance[i]);
+        strcat(message, distance_buffer);
+        strcat(message, ";");
     }
-    return -1;
+    message[1023] = '\0';
+    char *return_message = (char*)malloc(1024);
+	strcpy(return_message, message);
+    return return_message;
 }
 
-int getKey(char* key)
-{
-    for (int i = 0; i< MAXPAIR; i++)
+int recv_string(char* message, int node_distance[], char* node_name[], int connected){
+    char *clientname;
+    char *splitedMessage[28];
+    int n = 0;
+    char *ptr = strtok(message, ";");
+    while (ptr != NULL)
     {
-        if (use[i] == 1)
-        {
-					if(strncmp(key, keys[i], strlen(keys[i])) == 0){
-            return i;
-					}
-        }
+        splitedMessage[n++] = ptr;
+        ptr = strtok(NULL,";");
     }
-    return -1;
-}
-
-int removeKey(char* key)
-{
-    for (int i = 0; i< MAXPAIR; i++)
-    {
-        if (strncmp(key, keys[i], strlen(key)) == 0)
-        {
-            use[i] = 0;
-            return 1;
-        }
-    }
-    return -1;
-}
-
-char* getAll()
-{
-    char *allInfo = (char*)malloc(MAXDATASIZE * MAXPAIR * 2);
-    char key[MAXDATASIZE];
-	char value[MAXDATASIZE * 2];
-    for (int i = 0; i< MAXPAIR; i++)
-    {
-        if(use[i] == 1){
-            bzero(key, sizeof(key)); 
-		    bzero(value, sizeof(value));
-            memcpy(key, keys[i], strlen(keys[i]) * sizeof(char));
-            memcpy(value, values[i], strlen(values[i]) * sizeof(char));
-            strcat(allInfo, key);
-            strcat(allInfo,":");
-            strcat(allInfo, value);
-            strcat(allInfo, ";");
-        }
-    }
-    return allInfo;
-}
-
-char *duplicateChar(char *value)
-{
-	char newValue[MAXDATASIZE*2];
-	int j = 0;
-	for(int i = 0; i < strlen(value); i ++)
-	{
-		newValue[j] = value[i];
-		j++;
-		if (value[i] == 'c' || value[i] == 'm' || value[i] == 'p' || value[i] == 't')
-		{
-			newValue[j] = value[i];
-			j++;
+    clientname = splitedMessage[0];
+	int currdistance = 0;
+	for (int i = 0; i < connected; i++){
+		if (strstr(clientname, node_name[i]) != NULL){
+			currdistance = node_distance[i];
+			break;
 		}
+	}			
+	for (int i = 1; i < n; i ++)
+	{
+		char *nodename = strtok(splitedMessage[i], ":");
+		char *nodedistancechar = strtok(NULL, ":");
+		int nodedistance = atoi(nodedistancechar) + currdistance;
+		int foundt = 0;
+		for (int i = 0; i < n; i++){
+			if (strcpy(nodename, node_name[i]) != NULL){
+				if(node_distance[i] > nodedistance){
+					node_distance[i] = nodedistance;
+				}
+				foundt = 1;
+				break;
+			}
+		}
+		if (foundt == 0){
+            strcpy(node_name[connected], nodename);
+			node_distance[connected] = nodedistance;
+            connected += 1;
+		}
+		ptr = strtok(NULL,";");
 	}
-	newValue[j] = '\0';
-	char* somevalue =  (char*)malloc(MAXDATASIZE*2);
-	strcpy(somevalue, newValue);
-	return somevalue;
+    if (connected < n - 1){
+        return n - 1;
+    }
+    return connected;
 }
 
-void sigchld_handler(int s)
-{
-	(void)s; // quiet unused variable warning
+char* client(int port, char* send_message, char* servername) 
+{ 
+	int sockfd; 
+	struct sockaddr_in servaddr; 
+    char send_string[1024];
+    char recv_string[1024];
 
-	// waitpid() might overwrite errno, so we save and restore it:
-	int saved_errno = errno;
+	// Creating socket file descriptor 
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { 
+		printf("socket creation failed"); 
+		exit(0); 
+	} 
 
-	while(waitpid(-1, NULL, WNOHANG) > 0);
+	memset(&servaddr, 0, sizeof(servaddr)); 
 
-	errno = saved_errno;
-}
+	// Filling server information 
+	servaddr.sin_family = AF_INET; 
+	servaddr.sin_port = htons(port); 
+	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
 
+	if (connect(sockfd, (struct sockaddr*)&servaddr, 
+							sizeof(servaddr)) < 0) { 
+		printf("\n Error : Connect Failed \n"); 
+	} 
 
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-	if (sa->sa_family == AF_INET) {
-		return &(((struct sockaddr_in*)sa)->sin_addr);
-	}
+	memset(send_string, 0, sizeof(send_string)); 
+    memset(recv_string, 0, sizeof(recv_string)); 
+    strcpy(send_string, send_message);
+	write(sockfd, send_string, strlen(send_string)+1); 
+	//printf("Message from server BY client %s:", servername); 
+	read(sockfd, recv_string, sizeof(recv_string)); 
+	puts(recv_string); 
+	close(sockfd); 
+    if(strncmp(send_message,"?",1) == 0){
+        char * tmp = (char*)malloc(1024);
+	    strcpy(tmp, recv_string);
+        return tmp;
+    }
+    else{
+        return NULL;
+    }
+} 
 
-	return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
+void server(int port, int num_client, char* node_name[], char* server_name) 
+{ 
+    int listenfd, connfd, maxfdp1; 
+    char buffer[MAXLINE]; 
+    pid_t childpid; 
+    fd_set rset; 
+    socklen_t len; 
+    struct sockaddr_in cliaddr, servaddr; 
+    char* message = "\0"; 
+    void sig_chld(int); 
 
-
-int validOperation(char* operation)
-{
-	char add[] = "add";
-	char getvalue[] = "getvalue";
-	char getall[] = "getall";
-	char remove[] = "remove";
-	char quit[] = "quit";
-
-	if(strncmp(operation,quit,4) == 0)
-	{
-		return 1;
-	}
-	if(strncmp(operation,getall,6) == 0)
-	{
-		return 2;
-	}
-	if(strncmp(operation,getvalue,8) == 0)
-	{
-		return 3;
-	}
-	if(strncmp(operation,remove,6) == 0)
-	{
-		return 4;
-	}
-	if(strncmp(operation,add,3) == 0)
-	{
-		return 5;
-	}
-	else
-	{
-		return -1;
-	}
-}
-
-void sendString(int sockfd)
-{
-	char message[MAXDATASIZE * 2 + MAXOPERATIONSIZE];
-	char send_message[MAXDATASIZE * MAXPAIR * 2 + MAXOPERATIONSIZE];
-	int n;
-    // infinite loop for chat 
-    for (;;) { 
-			bzero(message, sizeof(message)); 
-			bzero(send_message, sizeof(send_message));
-
-			// read the message from client and copy it in buffer 
-			int readn = recv(sockfd, message, sizeof(message),0);
-			printf("receive %d byte of data: %s\n", readn, message);
-
-			char *ptr = strtok(message, "|");
-
-			char *splitedMessage[3];
-			n = 0;
-			while (ptr != NULL)
-			{
-				splitedMessage[n++] = ptr;
-				ptr = strtok(NULL,"|");
-			}
-
-			int operation_code = validOperation(splitedMessage[0]);
-			int result_code = 0;
-			if (operation_code == 1)
-			{
-				printf("Server Exit...\n"); 
-				break; 
-			}
-			else if (operation_code == 2)
-			{
-				strcpy(send_message,getAll());
-			}
-			else if (operation_code == 3)
-			{
-				int get_index = getKey(splitedMessage[1]);
-				printf("get index %d \n",get_index);
-				if (get_index < 0){
-					strcpy(send_message,"get fail");
-				}
-				else{
-					char get_value[MAXDATASIZE];
-					bzero(get_value,sizeof(get_value));
-					memcpy(get_value,values[get_index], strlen(values[get_index]));
-					//char *get_value = strdup(values[get_index]);
-					strcpy(send_message,get_value);
-				}
-			}
-			else if (operation_code == 4)
-			{
-				result_code = removeKey(splitedMessage[1]);
-				if(result_code < 0){
-					strcpy(send_message,"remove fail");
-				}
-				else{
-					strcpy(send_message,"remove success");
-				}
-			}
-			else if (operation_code == 5)
-			{
-				//char* newvalue = duplicateChar(splitedMessage[2]);
-				printf("duplicated string: %s \n",splitedMessage[2]);
-				result_code = addKey(splitedMessage[1], splitedMessage[2]);
-				if(result_code < 0){
-					strcpy(send_message,"add fail");
-				}
-				else{
-					strcpy(send_message,"add success");
-				}
-			}
-			//printf("%s",send_message);
-			//int writen = write(sockfd, send_message, sizeof(send_message));
-			//printf("send %d byte of data: %s \n", writen, send_message);
-			int writen = send(sockfd, send_message, sizeof(send_message),0);
-			printf("send %d byte of data: %s\n", writen, send_message);
-    } 
-}
-
-int main(void)
-{
-	int sockfd, connfd; 
-	socklen_t len;
-    struct sockaddr_in servaddr, cli; 
+    int connected = num_client;
+    int node_distance[26];
+    char send_message[1024];
+    for(int i = 0; i < connected; i++){
+        node_distance[i] = 1;
+    }
   
-    // socket create and verification 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-    if (sockfd == -1) { 
-        printf("socket creation failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Socket successfully created..\n"); 
+    /* create listening TCP socket */
+    listenfd = socket(AF_INET, SOCK_STREAM, 0); 
     bzero(&servaddr, sizeof(servaddr)); 
-  
-    // assign IP, PORT 
     servaddr.sin_family = AF_INET; 
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
-    servaddr.sin_port = htons(PORT); 
+    servaddr.sin_port = htons(port); 
   
-    // Binding newly created socket to given IP and verification 
-    if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) { 
-        printf("socket bind failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Socket successfully binded..\n"); 
+    // binding server addr structure to listenfd 
+    bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)); 
+    listen(listenfd, 10); 
   
-    // Now server is ready to listen and verification 
-    if ((listen(sockfd, 5)) != 0) { 
-        printf("Listen failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Server listening..\n"); 
-    len = sizeof(cli); 
+    // clear the descriptor set 
+    FD_ZERO(&rset); 
   
-    // Accept the data packet from client and verification 
-    connfd = accept(sockfd, (struct sockaddr*)&cli, &len); 
-    if (connfd < 0) { 
-        printf("server acccept failed...\n"); 
-        exit(0); 
-    } 
-    else{
-        printf("server acccept the client...\n"); 
-	}
+    // get maxfd 
+    maxfdp1 = listenfd + 1; 
+    for (;;) { 
+  
+        // set listenfd and udpfd in readset 
+        FD_SET(listenfd, &rset); 
 
-    // Function for chatting between client and server 
-    sendString(connfd); 
+        // select the ready descriptor 
+        select(maxfdp1, &rset, NULL, NULL, NULL); 
   
-    // After chatting close the socket 
-    close(sockfd); 
-
-	return 0;
+        // if tcp socket is readable then handle 
+        // it by accepting the connection 
+        if (FD_ISSET(listenfd, &rset)) { 
+            len = sizeof(cliaddr); 
+            connfd = accept(listenfd, (struct sockaddr*)&cliaddr, &len); 
+            if ((childpid = fork()) == 0) { 
+                close(listenfd); 
+                bzero(buffer, sizeof(buffer)); 
+                bzero(send_message, sizeof(send_message)); 
+                //printf("Message From TCP client BY server %s: ", server_name); 
+                read(connfd, buffer, sizeof(buffer)); 
+                //puts(buffer); 
+                if(strncmp(buffer,"?",1) == 0){
+                    //puts("receive client request for data");
+                    char * tmp = send_string(server_name,node_distance,node_name,connected, 0, 0);
+                    strcpy(send_message,tmp);
+                    strcat(send_message,"\0");
+                    free(tmp);
+                    //puts(send_message);
+                    write(connfd, (const char*)send_message, strlen(send_message)+1); 
+                }
+                else{
+                    connected = recv_string(buffer,node_distance,node_name, connected);
+                    write(connfd, (const char*)message, strlen(message)+1); 
+                }
+                close(connfd); 
+                exit(0); 
+            } 
+            close(connfd); 
+        } 
+    } 
 }
 
+void router(int server_port, int client_ports[], char* node_name[], int num_client, char * server_name){
+    if(!fork()){
+        server(server_port, num_client, node_name, server_name);
+    }
+    int node_distance[num_client];
+    char send_message[1024];
+    char recv_message[2048];
+    int connected = num_client;
+    for(int i = 0; i < num_client; i++){
+        node_distance[i] = 1;
+    }
+    for(;;){
+        sleep(2);
+        for(int i = 0; i < num_client; i++){
+            bzero(send_message,sizeof(send_message));
+            char* tmp = send_string(server_name,node_distance,node_name,connected, i, 1);
+            strcpy(send_message, tmp);
+            strcat(send_message,"\0");
+            client(client_ports[i],send_message, server_name);
+        }
+        bzero(recv_message,sizeof(recv_message));
+        char * tmp = client(server_port, "?",server_name);
+        connected = recv_string(tmp,node_distance, node_name, connected);
+        puts(recv_message);
+    }
+}
+
+int main(){
+    if(!fork()){
+        int clientports [] = {30007,30008}; 
+        char *clientname [] = {"B", "C"};
+        router(30009,clientports, clientname, 2,"A");
+    }
+    if(!fork()){
+        int clientports [] = {30009,30008};
+        char *clientname [] = {"A", "C"};
+        router(30007,clientports, clientname, 2,"B");
+    }
+    int clientports [] = {30007,30009};
+    char *clientname [] = { "B","A"};
+    router(30008,clientports, clientname, 2,"C");
+}
